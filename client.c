@@ -18,26 +18,27 @@
 
 int main(int argc, char const *argv[])
 {
-	if(argc != 3) {
-		fprintf(stderr,"Usage: %s <Server IP> <Echo Port>\n",argv[0]);
+	if (argc != 3)
+	{
+		fprintf(stderr, "Usage: %s <Server IP> <Echo Port>\n", argv[0]);
 		exit(1);
 	}
 
-	// Get info for device
-	char name[50] = "T fucking V";
-	int mode_2 = 4700;
-	int mode_3 = 1000;
-	int use_mode = 0;
+	// Get info for equip
+	// char name[50] = "T fucking V";
+	// int mode_2 = 4700;
+	// int mode_3 = 1000;
+	// int use_mode = 0;
 
-	// Get info for device
+	// Get info for equip
 	char name[50];
 	int mode_2;
 	int mode_3;
 	int use_mode;
-	printf("Device name: ");
-	sscanf(stdin, "%^[\n]%*c", name);
+	printf("equip name: ");
+	scanf("%s", name);
 	printf("Normal power mode: ");
-	scanf("%d", &mode_2);
+	scanf("%*c%d", &mode_2);
 	getchar();
 	printf("Limited power mode: ");
 	scanf("%d", &mode_3);
@@ -49,62 +50,73 @@ int main(int argc, char const *argv[])
 	struct sockaddr_in server_addr;
 	int msg_len, bytes_sent, bytes_received;
 
-    // Step 1: Construct socket
+	// Step 1: Construct socket
 	client_sock = socket(AF_INET, SOCK_STREAM, 0);
 
-    // Step 2: Specify server address
+	// Step 2: Specify server address
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(atoi(argv[2]));
 	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
 
-    // Step 3: Request to connect server
-	if (connect(client_sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0) {
+	// Step 3: Request to connect server
+	if (connect(client_sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0)
+	{
 		perror("accept() failed\n");
 		exit(1);
 	}
 
 	// Step 4: Communicate with server
 
-	// First, send device info to server
+	// First, send equip info to server
 	memset(buff, '\0', strlen(buff) + 1);
 	sprintf(buff, "%s|%d|%d", name, mode_2, mode_3);
 	msg_len = strlen(buff);
-	if (msg_len == 0) {
-		printf("No info on device\n");
+	if (msg_len == 0)
+	{
+		printf("No info on equip\n");
 		close(client_sock);
 		exit(1);
 	}
 	bytes_sent = send(client_sock, buff, msg_len, 0);
-	if (bytes_sent <= 0) {
+	if (bytes_sent <= 0)
+	{
 		printf("Connection close\n");
 		close(client_sock);
 		exit(1);
 	}
 
 	// Then, wait for server response
-	if (fork() == 0) {
+	if (fork() == 0)
+	{
 		// Child: listen from server
-		while(1) {
-			bytes_received = recv(client_sock, buff, BUFF_SIZE-1, 0);
-			if (bytes_received <= 0) {
+		while (1)
+		{
+			bytes_received = recv(client_sock, buff, BUFF_SIZE - 1, 0);
+			if (bytes_received <= 0)
+			{
 				// if DISCONNECT
 				printf("\nServer shuted down.\n");
 				break;
-			} else {
+			}
+			else
+			{
 				buff[bytes_received] = '\0';
 			}
 
 			int buff_i = atoi(buff);
-			// if (buff_i = 9) => max device reached => quit
+			// if (buff_i = 9) => max equip reached => quit
 
-			if (buff_i == 9) {
-				printf("Max devices reached. Can't connect to server\n");
+			if (buff_i == 9)
+			{
+				printf("Max number of equipment reached. Cannot connect to server\n");
 			}
-
-		} 
-	} else {
+		}
+	}
+	else
+	{
 		// Parent: open menu for user
-		do {
+		do
+		{
 			sleep(1);
 			printf(
 				"---- MENU ----\n"
@@ -116,11 +128,20 @@ int main(int argc, char const *argv[])
 			char menu = getchar();
 			getchar();
 
-			switch (menu) {
-				case '0': printf("TURN OFF\n\n"); break;
-				case '1': printf("NORMAL MODE\n\n"); break;
-				case '2': printf("POWER SAVING MODE\n\n"); break;
-				default: menu = '3'; printf("DISCONNECTED\n");
+			switch (menu)
+			{
+			case '0':
+				printf("TURN OFF\n\n");
+				break;
+			case '1':
+				printf("NORMAL MODE\n\n");
+				break;
+			case '2':
+				printf("POWER SAVING MODE\n\n");
+				break;
+			default:
+				menu = '3';
+				printf("DISCONNECTED\n");
 			}
 			if (menu == '3')
 				break;
@@ -128,8 +149,8 @@ int main(int argc, char const *argv[])
 		} while (1);
 	}
 
-    // Step 5: Close socket
+	// Step 5: Close socket
 	close(client_sock);
-    kill(0, SIGKILL);
+	kill(0, SIGKILL);
 	return 0;
 }

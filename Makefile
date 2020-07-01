@@ -1,6 +1,6 @@
 CC = gcc
 CFLAG = 
-SERVER_FILES = server.c
+SERVER_FILES = server.c config.h message.h power_system.h power_supply.h utils.h power_supply.c utils.c
 CLIENT_FILES = client.c
 
 all: server client
