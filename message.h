@@ -4,6 +4,10 @@
 #define MAX_MESSAGE_LENGTH 1000
 #define BUFF_SIZE 8192
 
+#define DISCONNECTING_FORMAT "d|%i|"
+#define MODE_CHANGING_FORMAT "m|%i|%s|"
+#define NEW_EQUIPMENT_FORMAT "n|%i|%s|"
+
 /**
  * message struct
  * mtype = 1 -> logWrite_handle
@@ -15,4 +19,6 @@ typedef struct
 	char mtext[MAX_MESSAGE_LENGTH];
 } message_t;
 
+message_t *make_message(long mtype, char format[], ...);
+char *message_to_string(message_t *mess);
 #endif // MESSAGE_H

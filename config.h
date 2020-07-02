@@ -1,8 +1,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <sys/ipc.h>
-
 #define MAX_EQUIP 10
 
 typedef enum

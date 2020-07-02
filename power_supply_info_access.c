@@ -1,132 +1,149 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/msg.h>
+#include <unistd.h>
+#include <sys/shm.h>
 
+#include "power_supply_info_access.h"
+#include "utils.h"
+#include "message.h"
+#include "config.h"
+#include "use_mode.h"
 
-void powSupplyInfoAccess() {
+power_supply_info_access_t *make_power_supply_info_access(int shmid_system, int shmid_equipment, int msqid)
+{
+	power_supply_info_access_t *powsup_info_access = (power_supply_info_access_t *)malloc(sizeof(power_supply_info_access_t));
+	if ((powsup_info_access->equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
+	{
+		tprintf("shmat() for equipment list failed at power supply info access creation\n");
+		free(powsup_info_access);
+		return NULL;
+	}
+	if ((powsup_info_access->powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
+	{
+		tprintf("shmat() for power system failed at power supply info access creation\n");
+		free(powsup_info_access);
+		return NULL;
+	}
+	powsup_info_access->msqid = msqid;
+	return powsup_info_access;
+}
+
+void start_power_supply_info_access(power_supply_info_access_t *powsup_info_access)
+{
 	// mtype = 2
-	msg_t got_msg;
-
-	//////////////////////////////
-	// Connect to shared memory //
-	//////////////////////////////
-	if ((devices = (device_t*) shmat(shmid_d, (void*) 0, 0)) == (void*)-1) {
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	if ((powsys = (powsys_t*) shmat(shmid_s, (void*) 0, 0)) == (void*)-1) {
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	////////////////
-	// check mail //
-	////////////////
-	while(1) {
-		// got mail!
-		if (msgrcv(msqid, &got_msg, MAX_MESSAGE_LENGTH, 2, 0) <= 0) {
-			tprintf("msgrcv() error");
+	char name[MAX_EQUIP_NAME];
+	int mode;
+	int pid;
+	int ordinal_use;
+	int limited_use;
+	message_t mess;
+	equip_t *equip;
+	while (1)
+	{
+		// received new message
+		if (msgrcv(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH + 1, 2, 0) <= 0)
+		{
+			// printf("\n%s\n", message_to_string(mess));
+			printf("At powsup info msqid: %i\n", powsup_info_access->msqid);
+			tprintf("msgrcv() error\n");
+			msgctl(powsup_info_access->msqid, IPC_RMID, NULL);
 			exit(1);
 		}
 
-		// header = 'n' => Create new device
-		if (got_msg.mtext[0] == 'n') {
-			int no;
-			for (no = 0; no < MAX_DEVICE; no++) {
-				if (devices[no].pid == 0)
+		// in case of creating new equip
+		if (mess.mtext[0] == 'n')
+		{
+			for (int i = 0; i < MAX_EQUIP; i++)
+			{
+				if (powsup_info_access->equipment[i].pid == 0)
+				{
+					equip = &(powsup_info_access->equipment[i]);
 					break;
-			}
-			sscanf(got_msg.mtext, "%*c|%d|%[^|]|%d|%d|",
-				&devices[no].pid,
-				devices[no].name,
-				&devices[no].use_power[1],
-				&devices[no].use_power[2]);
-			devices[no].mode = 0;
-			tprintf("--- Connected device info ---\n");
-			tprintf("       name: %s\n", devices[no].name);
-			tprintf("     normal: %dW\n", devices[no].use_power[1]);
-			tprintf("      limit: %dW\n", devices[no].use_power[2]);
-			tprintf("   use mode: %s\n", use_mode[devices[no].mode]);
-			tprintf("-----------------------------\n\n");
-			tprintf("System power using: %dW\n", powsys->current_power);
-
-			// send message to logWrite
-			msg_t new_msg;
-			new_msg.mtype = 1;
-			sprintf(new_msg.mtext, "s|[%s] connected (Normal use: %dW, Linited use: %dW)|", 
-				devices[no].name, 
-				devices[no].use_power[1], 
-				devices[no].use_power[2]);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-
-			sprintf(new_msg.mtext, "s|Device [%s] set mode to [off] ~ using 0W|", devices[no].name);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-		}
-
-		// header = 'm' => Change the mode!
-		if (got_msg.mtext[0] == 'm') {
-			int no, temp_pid, temp_mode;
-
-			sscanf(got_msg.mtext, "%*c|%d|%d|", &temp_pid, &temp_mode);
-
-			for (no = 0; no < MAX_DEVICE; no++) {
-				if (devices[no].pid == temp_pid)
-					break;
-			}
-			devices[no].mode = temp_mode;
-
-			// send message to logWrite
-			msg_t new_msg;
-			new_msg.mtype = 1;
-			char temp[MAX_MESSAGE_LENGTH];
-
-			sprintf(temp, "Device [%s] change mode to [%s], comsume %dW", 
-				devices[no].name, 
-				use_mode[devices[no].mode],
-				devices[no].use_power[devices[no].mode]);
-			tprintf("%s\n", temp);
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-
-			sleep(1);
-			sprintf(temp, "System power using: %dW", powsys->current_power);
-			tprintf("%s\n", temp);
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-
-		}
-
-		// header = 'd' => Disconnect
-		if (got_msg.mtext[0] == 'd') {
-			int no, temp_pid;
-			sscanf(got_msg.mtext, "%*c|%d|", &temp_pid);
-
-			// send message to logWrite
-			msg_t new_msg;
-			new_msg.mtype = 1;
-			char temp[MAX_MESSAGE_LENGTH];
-			
-			sprintf(temp, "Device [%s] disconnected", devices[no].name);
-
-			for (no = 0; no < MAX_DEVICE; no++) {
-				if (devices[no].pid == temp_pid) {
-					tprintf("%s\n\n", temp);
-					devices[no].pid = 0;
-					strcpy(devices[no].name, "");
-					devices[no].use_power[0] = 0;
-					devices[no].use_power[1] = 0;
-					devices[no].use_power[2] = 0;
-					devices[no].mode = 0;
-					break;
-				} else {
-					tprintf("Error! Device not found\n\n");
 				}
 			}
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
 
-			sprintf(temp, "System power using: %dW", powsys->current_power);
+			sscanf(mess.mtext, "%*c|%d|%[^|]|%d|%d|", &pid, name, &ordinal_use, &limited_use);
+			equip = set_equip(equip, pid, name, ordinal_use, limited_use);
+
+			print_equip(equip);
+			tprintf("System power using: %dW\n", powsup_info_access->powsys->current_power);
+
+			// send message to logWrite
+
+			mess = *make_message(1, "s|[%s] connected (Ordinal use: %dW, Limited use: %dW)|", equip->name,
+								 equip->use_power[1],
+								 equip->use_power[2]);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+			printf("Sent: %s", message_to_string(&mess));
+
+			mess = *make_message(1, "s|equip [%s] set mode to [off] ~ using 0W|", equip->name);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+			printf("Sent: %s", message_to_string(&mess));
+		}
+		else if (mess.mtext[0] == 'm') // in case of changing mode
+		{
+			sscanf(mess.mtext, "%*c|%d|%d|", &pid, &mode);
+
+			for (int i = 0; i < MAX_EQUIP; i++)
+			{
+				if (powsup_info_access->equipment[i].pid == pid)
+				{
+					equip = &(powsup_info_access->equipment[i]);
+					break;
+				}
+			}
+			equip->mode = mode;
+
+			print_equip(equip);
+
+			// send message to logWrite
+			mess = *make_message(1, "s|equip [%s] has changed its mode to [%s], comsuming %dW",
+								 equip->name,
+								 mode_to_string(equip->mode),
+								 equip->use_power[equip->mode]);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+			printf("Sent: %s", message_to_string(&mess));
+
+			sleep(1);
+			char temp[MAX_MESSAGE_LENGTH];
+			sprintf(temp, "System power using: %dW", powsup_info_access->powsys->current_power);
 			tprintf("%s\n", temp);
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
+			mess = *make_message(1, "s|%s", temp);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+			printf("Sent: %s", message_to_string(&mess));
+		}
+		else if (mess.mtext[0] == 'd') // in case of disconnection
+		{
+			sscanf(mess.mtext, "%*c|%d|", pid);
+
+			// send message to logWrite
+
+			char temp[MAX_MESSAGE_LENGTH];
+
+			sprintf(temp, "equip [%s] disconnected", equip->name);
+			int i;
+			for (i = 0; i < MAX_EQUIP; i++)
+			{
+				equip = &(powsup_info_access->equipment[i]);
+				if (equip->pid == pid)
+				{
+					tprintf("%s\n\n", temp);
+					reset_equip(equip);
+					break;
+				}
+			}
+			if (i == MAX_EQUIP)
+			{
+				tprintf("Error! Equipment not found\n\n");
+			}
+			mess = *make_message(1, "s|%s", temp);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+
+			sprintf(temp, "System power using: %dW", powsup_info_access->powsys->current_power);
+			tprintf("%s\n", temp);
+			mess = *make_message(1, "s|%s", temp);
+			msgsnd(powsup_info_access->msqid, &mess, MAX_MESSAGE_LENGTH, 0);
 		}
 
 	} // endwhile
