@@ -93,7 +93,7 @@ void connectMng_handle()
 //  connect_message.c
 	
 	}
-	start_connect_message(make_connect_message(listen_sock, msqid));
+	start_connect_message(make_connect_message(shmid_system,listen_sock, msqid));
 }
 void elePowerCtrl_handle()
 {

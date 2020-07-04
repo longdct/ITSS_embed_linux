@@ -1,9 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include <time.h>
+#include <stdarg.h>
+#include <signal.h>
+#include <stddef.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
 #include <sys/msg.h>
 #include <unistd.h>
-#include <sys/shm.h>
-
+#include "config.h"
 #include "power_supply_info_access.h"
 #include "utils.h"
 #include "message.h"
@@ -11,16 +24,25 @@
 #include "use_mode.h"
 #include "connect_message.h"
 #include "power_supply.h"
+#include "utils.h"
+#include "equipment.h"
 
-connect_message_t *make_connect_message(int listen_sock,int msqid){
+#define BACKLOG 10 /* Number of allowed connections */
+connect_message_t *make_connect_message(int shmid_system,int listen_sock,int msqid){
     	connect_message_t *connect_message = (connect_message_t *)malloc(sizeof(connect_message_t));
         connect_message->listen_sock=listen_sock;
         connect_message->msqid=msqid;
+		connect_message->shmid_system=shmid_system;
         return connect_message;
 }
-void start_connect_message(connect_message_t connect_message){
-    /Step 3: Listen request from client
-	if (listen(listen_sock, BACKLOG) == -1)
+void start_connect_message(connect_message_t *connect_message){
+    //Step 3: Listen request from client
+	int sin_size;
+	int conn_sock;
+	struct sockaddr_in client;
+	int bytes_sent, bytes_received;
+	pid_t powerSupply;
+	if (listen(connect_message->listen_sock, BACKLOG) == -1)
 	{
 		tprintf("listen() failed\n");
 		exit(1);
@@ -31,7 +53,7 @@ void start_connect_message(connect_message_t connect_message){
 	{
 		//accept request
 		sin_size = sizeof(struct sockaddr_in);
-		if ((conn_sock = accept(listen_sock, (struct sockaddr *)&client, &sin_size)) == -1)
+		if ((conn_sock = accept(connect_message->listen_sock, (struct sockaddr *)&client, &sin_size)) == -1)
 		{
 			tprintf("accept() failed\n");
 			continue;
@@ -57,8 +79,8 @@ void start_connect_message(connect_message_t connect_message){
 		if (powerSupply == 0)
 		{
 			//in child
-			close(listen_sock);
-			start_power_supply(make_power_supply(conn_sock, shmid_system, msqid));
+			close(connect_message->listen_sock);
+			start_power_supply(make_power_supply(conn_sock, connect_message->shmid_system, connect_message->msqid));
 			close(conn_sock);
 		}
 		else
@@ -70,6 +92,5 @@ void start_connect_message(connect_message_t connect_message){
 		}
 	} //end communication
 
-	close(listen_sock);
+	close(connect_message->listen_sock);
 } //end function connectMng_handle
-}
