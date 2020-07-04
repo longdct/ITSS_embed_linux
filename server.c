@@ -31,7 +31,7 @@
 #include "utils.h"
 #include "equipment.h"
 #include "use_mode.h"
-
+#include "connect_message.h"
 #define POWER_THRESHOLD 5000
 #define WARNING_THRESHOLD 4500
 #define BACKLOG 10 /* Number of allowed connections */
@@ -88,62 +88,13 @@ void connectMng_handle()
 	{
 		tprintf("bind() failed\n");
 		exit(1);
+
+		
+//  connect_message.c
+	
 	}
-
-	//Step 3: Listen request from client
-	if (listen(listen_sock, BACKLOG) == -1)
-	{
-		tprintf("listen() failed\n");
-		exit(1);
-	}
-
-	//Step 4: Communicate with client
-	while (1)
-	{
-		//accept request
-		sin_size = sizeof(struct sockaddr_in);
-		if ((conn_sock = accept(listen_sock, (struct sockaddr *)&client, &sin_size)) == -1)
-		{
-			tprintf("accept() failed\n");
-			continue;
-		}
-
-		// if 11-th equip connect to SERVER
-		if (powerSupply_count == MAX_EQUIP)
-		{
-			char re = '9';
-			if ((bytes_sent = send(conn_sock, &re, 1, 0)) <= 0)
-				tprintf("send() failed\n");
-			close(conn_sock);
-			break;
-		}
-
-		// create new process powerSupply
-		if ((powerSupply = fork()) < 0)
-		{
-			tprintf("powerSupply fork() failed\n");
-			continue;
-		}
-
-		if (powerSupply == 0)
-		{
-			//in child
-			close(listen_sock);
-			start_power_supply(make_power_supply(conn_sock, shmid_system, msqid));
-			close(conn_sock);
-		}
-		else
-		{
-			//in parent
-			close(conn_sock);
-			powerSupply_count++;
-			tprintf("A equip connected, connectMng forked new process powerSupply --- pid: %d.\n", powerSupply);
-		}
-	} //end communication
-
-	close(listen_sock);
-} //end function connectMng_handle
-
+	start_connect_message(make_connect_message(shmid_system,listen_sock, msqid));
+}
 void elePowerCtrl_handle()
 {
 	//////////////////////////////
