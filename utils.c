@@ -18,7 +18,7 @@
 
 #include "utils.h"
 
-int tprintf(const char* format, ...){
+int time_printf(const char* format, ...){
 	struct tm * cur_time;
 	time_t current = time(NULL);
 	cur_time = localtime (&current);

@@ -44,7 +44,7 @@ void start_connect_message(connect_message_t *connect_message){
 	pid_t powerSupply;
 	if (listen(connect_message->listen_sock, BACKLOG) == -1)
 	{
-		tprintf("listen() failed\n");
+		time_printf("listen() failed\n");
 		exit(1);
 	}
 
@@ -55,7 +55,7 @@ void start_connect_message(connect_message_t *connect_message){
 		sin_size = sizeof(struct sockaddr_in);
 		if ((conn_sock = accept(connect_message->listen_sock, (struct sockaddr *)&client, &sin_size)) == -1)
 		{
-			tprintf("accept() failed\n");
+			time_printf("accept() failed\n");
 			continue;
 		}
 
@@ -64,7 +64,7 @@ void start_connect_message(connect_message_t *connect_message){
 		{
 			char re = '9';
 			if ((bytes_sent = send(conn_sock, &re, 1, 0)) <= 0)
-				tprintf("send() failed\n");
+				time_printf("send() failed\n");
 			close(conn_sock);
 			break;
 		}
@@ -72,7 +72,7 @@ void start_connect_message(connect_message_t *connect_message){
 		// create new process powerSupply
 		if ((powerSupply = fork()) < 0)
 		{
-			tprintf("powerSupply fork() failed\n");
+			time_printf("powerSupply fork() failed\n");
 			continue;
 		}
 
@@ -88,7 +88,7 @@ void start_connect_message(connect_message_t *connect_message){
 			//in parent
 			close(conn_sock);
 			powerSupply_count++;
-			tprintf("A equip connected, connectMng forked new process powerSupply --- pid: %d.\n", powerSupply);
+			time_printf("A equip connected, connectMng forked new process powerSupply --- pid: %d.\n", powerSupply);
 		}
 	} //end communication
 

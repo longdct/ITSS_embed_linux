@@ -37,11 +37,11 @@ equip_t *reset_equip(equip_t *equip)
 
 void print_equip(equip_t *equip)
 {
-	tprintf("-----------------------------\n");
-	tprintf("Equipment Information\n");
-	tprintf("\t Equipment Name: %s\n", equip->name);
-	tprintf("\t Ordinal Mode: %dW\n", equip->use_power[1]);
-	tprintf("\t Limited Mode: %dW\n", equip->use_power[2]);
-	tprintf("\t Current Mode: %s\n", mode_to_string(equip->mode));
-	tprintf("-----------------------------\n\n");
+	time_printf("-----------------------------\n");
+	time_printf("Equipment Information\n");
+	time_printf("\t Equipment Name: %s\n", equip->name);
+	time_printf("\t Ordinal Mode: %dW\n", equip->use_power[1]);
+	time_printf("\t Limited Mode: %dW\n", equip->use_power[2]);
+	time_printf("\t Current Mode: %s\n", mode_to_string(equip->mode));
+	time_printf("-----------------------------\n\n");
 }

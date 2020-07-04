@@ -28,7 +28,7 @@ power_supply_t *make_power_supply(int conn_sock, int shmid_system, int msqid)
 	// Get shared memory
 	if ((powsup->powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
 	{
-		tprintf("shmat() for power system failed at power supply creation\n");
+		time_printf("shmat() for power system failed at power supply creation\n");
 		free(powsup);
 		return NULL;
 	}
@@ -40,7 +40,7 @@ power_supply_t *make_power_supply(int conn_sock, int shmid_system, int msqid)
 
 void start_power_supply(power_supply_t *powsup)
 {
-	bool is_first_message = true; // check if this is first time client sent
+	bool is_accept_message = true;
 	char received_data[BUFF_SIZE];
 	int bytes_received;
 	message_t *mess;
@@ -48,41 +48,49 @@ void start_power_supply(power_supply_t *powsup)
 	while (1)
 	{
 		bytes_received = recv(powsup->conn_sock, received_data, BUFF_SIZE - 1, 0);
-		if (bytes_received <= 0)
+		if (bytes_received <= 0) // if connection is disconnected
 		{
-			// if connection is disconnected,
-			// send message to powSupplyInfoAccess
-			mess = make_message(2, DISCONNECTING_FORMAT, getpid());
+			// // send message to power_supply_info_access
+			// mess = make_message(2, DISCONNECTING_FORMAT, getpid());
+			// msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
+
+			// send device info to elec_power_ctrl
+			mess = make_message(ELEC_POWER_CTRL_MESS_CODE, W_DISCONNECTING_FORMAT, getpid());
 			msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
-			printf("Sent: %s", message_to_string(mess));
 
 			powerSupply_count--;
-			// kill this process
-			kill(getpid(), SIGKILL);
+
+			kill(getpid(), SIGKILL); // kill this process
 			break;
 		}
-		else
+		else // if receive message from client
 		{
-			// if receive message from client
+			
 			received_data[bytes_received] = '\0';
-			if (is_first_message == true)
+			if (is_accept_message == true)
 			{
-				is_first_message = false;
-				// send device info to powSupplyInfoAccess
+				is_accept_message = false;
 
-				mess = make_message(2, NEW_EQUIPMENT_FORMAT, getpid(), received_data); // n for NEW
+				// send device info to power_supply_info_access
+				mess = make_message(POW_SUP_INF_ACC_MESS_CODE, W_NEW_EQUIPMENT_FORMAT, getpid(), received_data);
 				msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
-				printf("Sent: %s", message_to_string(mess));
+
+				// send device info to elec_power_ctrl
+				mess->mtype = ELEC_POWER_CTRL_MESS_CODE;
+				msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
 			}
 			else
 			{
-				// if not first time client send
-				// send mode to powSupplyInfoAccess
+				// if not accept message sent
 
-				mess = make_message(2, MODE_CHANGING_FORMAT, getpid(), received_data); // m for MODE
+				// send mode to to power_supply_info_access
+				mess = make_message(POW_SUP_INF_ACC_MESS_CODE, W_MODE_CHANGING_FORMAT, getpid(), received_data);
 				msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
-				printf("Sent: %s", message_to_string(mess));
+
+				// send device info to elec_power_ctrl
+				mess->mtype = ELEC_POWER_CTRL_MESS_CODE;
+				msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
 			}
 		}
-	} 
+	}
 }

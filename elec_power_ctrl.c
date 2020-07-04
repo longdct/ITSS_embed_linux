@@ -7,6 +7,7 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 
+#include "utils.h"
 #include "elec_power_ctrl.h"
 #include "message.h"
 #include "equipment.h"
@@ -22,13 +23,13 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
     //////////////////////////////
     if ((equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
     {
-        printf("shmat() failed\n");
+        time_printf("shmat() failed\n");
         exit(1);
     }
 
     if ((powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
     {
-        printf("shmat() failed\n");
+        time_printf("shmat() failed\n");
         exit(1);
     }
 
@@ -73,7 +74,7 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
             new_msg.mtype = 1;
             char temp[MAX_MESSAGE_LENGTH];
             sprintf(temp, "WARNING!!! Over threshold, power comsuming: %dW", powsys->current_power);
-            printf("%s\n", temp);
+            time_printf("%s\n", temp);
             sprintf(new_msg.mtext, "s|%s", temp);
             msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
         }
@@ -87,11 +88,11 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
             char temp[MAX_MESSAGE_LENGTH];
 
             sprintf(temp, "DANGER!!! System overload, power comsuming: %dW", powsys->current_power);
-            printf("%s\n", temp);
+            time_printf("%s\n", temp);
             sprintf(new_msg.mtext, "s|%s", temp);
             msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
 
-            printf("Server reset in 10 seconds\n");
+            time_printf("Server reset in 10 seconds\n");
 
             int no;
             for (no = 0; no < MAX_EQUIP; no++)
@@ -135,7 +136,7 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
                     if (powsys->current_power < POWER_THRESHOLD)
                     {
                         powsys->supply_over = 0;
-                        printf("OK, power now is %d", powsys->current_power);
+                        time_printf("OK, power now is %d", powsys->current_power);
                         kill(my_child, SIGKILL);
                         break;
                     }

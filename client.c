@@ -25,17 +25,11 @@ int main(int argc, char const *argv[])
 	}
 
 	// Get info for equip
-	// char name[50] = "T fucking V";
-	// int mode_2 = 4700;
-	// int mode_3 = 1000;
-	// int use_mode = 0;
-
-	// Get info for equip
 	char name[50];
 	int mode_2;
 	int mode_3;
 	int use_mode;
-	printf("equip name: ");
+	printf("Equipment name: ");
 	scanf("%s", name);
 	printf("Normal power mode: ");
 	scanf("%*c%d", &mode_2);
@@ -80,7 +74,7 @@ int main(int argc, char const *argv[])
 	bytes_sent = send(client_sock, buff, msg_len, 0);
 	if (bytes_sent <= 0)
 	{
-		printf("Connection close\n");
+		printf("Connection closed\n");
 		close(client_sock);
 		exit(1);
 	}
@@ -119,11 +113,11 @@ int main(int argc, char const *argv[])
 		{
 			sleep(1);
 			printf(
-				"---- MENU ----\n"
-				"0. Turn off\n"
-				"1. Ordinal mode\n"
-				"2. Power saving mode\n"
-				"(Choose 0,1 or 2, others to disconnect): ");
+				"--------\nPlease choose 0, 1, or 2 to change mode of equipment:\n"
+				"0) Turning off\n"
+				"1) Normal mode\n"
+				"2) Power saving mode\n"
+				"Other options to disconnect.\nYour choice: ");
 
 			char menu = getchar();
 			getchar();
@@ -131,7 +125,7 @@ int main(int argc, char const *argv[])
 			switch (menu)
 			{
 			case '0':
-				printf("TURN OFF\n\n");
+				printf("TURNING OFF\n\n");
 				break;
 			case '1':
 				printf("NORMAL MODE\n\n");

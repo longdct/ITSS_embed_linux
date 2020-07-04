@@ -75,7 +75,7 @@ void connectMng_handle()
 	//Step 1: Construct a TCP socket to listen connection request
 	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
-		tprintf("socket() failed\n");
+		time_printf("socket() failed\n");
 		exit(1);
 	}
 
@@ -86,7 +86,7 @@ void connectMng_handle()
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(listen_sock, (struct sockaddr *)&server, sizeof(server)) == -1)
 	{
-		tprintf("bind() failed\n");
+		time_printf("bind() failed\n");
 		exit(1);
 	}
 	//  connect_message.c
@@ -108,12 +108,12 @@ int main(int argc, char const *argv[])
 	///////////////////////////////////////////
 	if ((shmid_system = shmget(key_s, sizeof(powsys_t), 0644 | IPC_CREAT)) < 0)
 	{
-		tprintf("shmget() failed\n");
+		time_printf("shmget() failed\n");
 		exit(1);
 	}
 	if ((powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
 	{
-		tprintf("shmat() failed\n");
+		time_printf("shmat() failed\n");
 		exit(1);
 	}
 	powsys->current_power = 0;
@@ -126,12 +126,12 @@ int main(int argc, char const *argv[])
 	/////////////////////////////////////////////
 	if ((shmid_equipment = shmget(key_e, sizeof(equip_t) * MAX_EQUIP, 0644 | IPC_CREAT)) < 0)
 	{
-		tprintf("shmget() failed\n");
+		time_printf("shmget() failed\n");
 		exit(1);
 	}
 	if ((equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
 	{
-		tprintf("shmat() failed\n");
+		time_printf("shmat() failed\n");
 		exit(1);
 	}
 
@@ -152,7 +152,7 @@ int main(int argc, char const *argv[])
 	//////////////////////////////////
 	if ((msqid = msgget(key_m, 0644 | IPC_CREAT)) < 0)
 	{
-		tprintf("msgget() failed\n");
+		time_printf("msgget() failed\n");
 		exit(1);
 	}
 
@@ -192,15 +192,15 @@ int main(int argc, char const *argv[])
 	}
 	else
 	{
-		tprintf("SERVER forked new process connectMng ------------------ pid: %d.\n", connectMng);
-		tprintf("SERVER forked new process elePowerCtrl ---------------- pid: %d.\n", elePowerCtrl);
-		tprintf("SERVER forked new process powSupplyInfoAccess --------- pid: %d.\n", powSupplyInfoAccess);
-		tprintf("SERVER forked new process logWrite -------------------- pid: %d.\n\n", logWrite);
+		time_printf("SERVER forked new process connectMng ------------------ pid: %d.\n", connectMng);
+		time_printf("SERVER forked new process elePowerCtrl ---------------- pid: %d.\n", elePowerCtrl);
+		time_printf("SERVER forked new process powSupplyInfoAccess --------- pid: %d.\n", powSupplyInfoAccess);
+		time_printf("SERVER forked new process logWrite -------------------- pid: %d.\n\n", logWrite);
 		waitpid(connectMng, NULL, 0);
 		waitpid(elePowerCtrl, NULL, 0);
 		waitpid(powSupplyInfoAccess, NULL, 0);
 		waitpid(logWrite, NULL, 0);
-		tprintf("SERVER exited\n\n");
+		time_printf("SERVER exited\n\n");
 	}
 
 	return 0;
