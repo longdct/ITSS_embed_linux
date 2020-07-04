@@ -22,7 +22,6 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
-#include <unistd.h>
 
 #include "config.h"
 #include "power_supply_info_access.h"
@@ -32,8 +31,9 @@
 #include "equipment.h"
 #include "use_mode.h"
 #include "connect_message.h"
-#define POWER_THRESHOLD 5000
-#define WARNING_THRESHOLD 4500
+#include "log_write.h"
+#include "elec_power_ctrl.h"
+
 #define BACKLOG 10 /* Number of allowed connections */
 
 #define MAX_LOG_EQUIP 100
@@ -88,199 +88,10 @@ void connectMng_handle()
 	{
 		tprintf("bind() failed\n");
 		exit(1);
-
-		
-//  connect_message.c
-	
 	}
-	start_connect_message(make_connect_message(shmid_system,listen_sock, msqid));
+	//  connect_message.c
+	start_connect_message(make_connect_message(shmid_system, listen_sock, msqid));
 }
-void elePowerCtrl_handle()
-{
-	//////////////////////////////
-	// Connect to shared memory //
-	//////////////////////////////
-	if ((equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
-	{
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	if ((powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
-	{
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	int i;
-	int check_warn_threshold = 0;
-
-	while (1)
-	{
-		// get total power using
-		int sum_temp = 0;
-		for (i = 0; i < MAX_EQUIP; i++)
-			sum_temp += equipment[i].use_power[equipment[i].mode];
-		powsys->current_power = sum_temp;
-
-		// check threshold
-		if (powsys->current_power >= POWER_THRESHOLD)
-		{
-			powsys->supply_over = 1;
-			powsys->threshold_over = 1;
-		}
-		else if (powsys->current_power >= WARNING_THRESHOLD)
-		{
-			powsys->supply_over = 0;
-			powsys->threshold_over = 1;
-			// powsys->reset = 0;
-		}
-		else
-		{
-			check_warn_threshold = 0;
-			powsys->supply_over = 0;
-			powsys->threshold_over = 0;
-			// powsys->reset = 0;
-		}
-
-		// WARN over threshold
-		if (powsys->threshold_over && !check_warn_threshold)
-		{
-			check_warn_threshold = 1;
-
-			// send message to logWrite
-			message_t new_msg;
-			new_msg.mtype = 1;
-			char temp[MAX_MESSAGE_LENGTH];
-			sprintf(temp, "WARNING!!! Over threshold, power comsuming: %dW", powsys->current_power);
-			tprintf("%s\n", temp);
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-		}
-
-		// overload
-		if (powsys->supply_over)
-		{
-			// send message to logWrite
-			message_t new_msg;
-			new_msg.mtype = 1;
-			char temp[MAX_MESSAGE_LENGTH];
-
-			sprintf(temp, "DANGER!!! System overload, power comsuming: %dW", powsys->current_power);
-			tprintf("%s\n", temp);
-			sprintf(new_msg.mtext, "s|%s", temp);
-			msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-
-			tprintf("Server reset in 10 seconds\n");
-
-			int no;
-			for (no = 0; no < MAX_EQUIP; no++)
-			{
-				if (equipment[no].mode == 1)
-				{
-					new_msg.mtype = 2;
-					sprintf(new_msg.mtext, "m|%d|2|", equipment[no].pid);
-					msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-				}
-			}
-
-			pid_t my_child;
-			if ((my_child = fork()) == 0)
-			{
-				// in child
-				sleep(5);
-
-				int no;
-				for (no = 0; no < MAX_EQUIP; no++)
-				{
-					if (equipment[no].mode != 0)
-					{
-						new_msg.mtype = 2;
-						sprintf(new_msg.mtext, "m|%d|0|", equipment[no].pid);
-						msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-					}
-				}
-				kill(getpid(), SIGKILL);
-			}
-			else
-			{
-				//in parent
-				while (1)
-				{
-					sum_temp = 0;
-					for (i = 0; i < MAX_EQUIP; i++)
-						sum_temp += equipment[i].use_power[equipment[i].mode];
-					powsys->current_power = sum_temp;
-
-					if (powsys->current_power < POWER_THRESHOLD)
-					{
-						powsys->supply_over = 0;
-						tprintf("OK, power now is %d", powsys->current_power);
-						kill(my_child, SIGKILL);
-						break;
-					}
-				}
-			}
-		}
-	} // endwhile
-} //end function elePowerCtrl_handle
-
-void logWrite_handle()
-{
-	// mtype == 1
-	message_t got_msg;
-
-	//////////////////////////////
-	// Connect to shared memory //
-	//////////////////////////////
-	if ((equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
-	{
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	if ((powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
-	{
-		tprintf("shmat() failed\n");
-		exit(1);
-	}
-
-	///////////////////////////
-	// Create sever log file //
-	///////////////////////////
-	char file_name[255];
-	time_t t = time(NULL);
-	struct tm *now = localtime(&t);
-	strftime(file_name, sizeof(file_name), "log/server_%Y-%m-%d_%H:%M:%S.txt", now);
-	log_server = fopen(file_name, "w");
-	tprintf("Log server started, file is %s\n", file_name);
-
-	///////////////////////////////
-	// Listen to other processes //
-	///////////////////////////////
-	while (1)
-	{
-		// got mail!
-		if (msgrcv(msqid, &got_msg, MAX_MESSAGE_LENGTH, 1, 0) == -1)
-		{
-			tprintf("msgrcv() error");
-			exit(1);
-		}
-
-		// header = 's' => Write log to server
-		if (got_msg.mtext[0] == 's')
-		{
-			char buff[MAX_MESSAGE_LENGTH];
-			//extract from message
-			sscanf(got_msg.mtext, "%*2c%[^|]|", buff);
-			// get time now
-			char log_time[20];
-			strftime(log_time, sizeof(log_time), "%Y/%m/%d_%H:%M:%S", now);
-			// write log
-			fprintf(log_server, "%s | %s\n", log_time, buff);
-		}
-	}
-} //end function logWrite_handle
 
 int main(int argc, char const *argv[])
 {
@@ -360,7 +171,7 @@ int main(int argc, char const *argv[])
 	}
 	else if ((elePowerCtrl = fork()) == 0)
 	{
-		elePowerCtrl_handle();
+		elec_power_ctrl_handle(shmid_equipment, shmid_system, msqid);
 	}
 	else if ((powSupplyInfoAccess = fork()) == 0)
 	{
@@ -368,7 +179,16 @@ int main(int argc, char const *argv[])
 	}
 	else if ((logWrite = fork()) == 0)
 	{
-		logWrite_handle();
+		///////////////////////////
+		// Create sever log file //
+		///////////////////////////
+		char file_name[255];
+		time_t t = time(NULL);
+		struct tm *now = localtime(&t);
+		strftime(file_name, sizeof(file_name), "log/server_%Y-%m-%d_%H:%M:%S.txt", now);
+		log_server = fopen(file_name, "w");
+		printf("Log server started, file is %s\n", file_name);
+		log_write_handle(log_server, shmid_equipment, shmid_system, msqid);
 	}
 	else
 	{

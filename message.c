@@ -19,6 +19,6 @@ message_t *make_message(long mtype, char format[], ...)
 char *message_to_string(message_t *mess)
 {
     char *str = (char *)malloc(sizeof(char)*MAX_MESSAGE_LENGTH);
-    sprintf(str, "Type: %i\t Contents: %s\n", mess->mtype, mess->mtext);
+    sprintf(str, "Type: %li\t Contents: %s\n", mess->mtype, mess->mtext);
     return str;
 }
