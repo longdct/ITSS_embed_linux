@@ -27,25 +27,23 @@
 #include "log_write.h"
 #include "elec_power_ctrl.h"
 
-#define BACKLOG 10 // Number of allowed connections 
-
 #define MAX_LOG_EQUIP 100
 
 int server_port;
-pid_t connectMng, powerSupply, elePowerCtrl, powSupplyInfoAccess, logWrite;
-int powerSupply_count;
+pid_t connect_mng, power_supply, ele_power_ctrl, pow_supply_info_access, log_write;
+int power_supply_count;
 int listen_sock, conn_sock;
 const char **use_mode;
 int bytes_sent, bytes_received;
 struct sockaddr_in server;
 struct sockaddr_in client;
 int sin_size;
-key_t key_s = 6666, key_e = 7777, key_m = 8888; 
-int shmid_system, shmid_equipment, msqid;		
+key_t key_s = 6666, key_e = 7777, key_m = 8888;
+int shmid_system, shmid_equipment, msqid;
 FILE *log_server;
 
-power_system_t *powsys;	// state  of system
-equip_t *equipment; // list of all equip
+power_system_t *powsys; // system state
+equip_t *equipment;		// list of equipment
 
 void sigHandleSIGINT()
 {
@@ -57,9 +55,9 @@ void sigHandleSIGINT()
 	exit(0);
 }
 
-void connectMng_handle()
+void connect_mng_handle()
 {
-	// Construct a TCP socket to listen connection request
+	// Create TCP socket
 	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		time_printf("socket() failed\n");
@@ -92,7 +90,7 @@ int main(int argc, char const *argv[])
 	server_port = atoi(argv[1]);
 	printf("SERVER start, PID is %d.\n", getpid());
 
-	// Create shared memory for power system 
+	// Create shared memory for power system
 	if ((shmid_system = shmget(key_s, sizeof(power_system_t), 0644 | IPC_CREAT)) < 0)
 	{
 		time_printf("shmget() failed\n");
@@ -119,7 +117,7 @@ int main(int argc, char const *argv[])
 		exit(1);
 	}
 
-	// Init data for shared memory
+	// Initiate data
 	int i;
 	for (i = 0; i < MAX_EQUIP; i++)
 	{
@@ -131,7 +129,7 @@ int main(int argc, char const *argv[])
 		equipment[i].mode = 0;
 	}
 
-	// Create message queue 
+	// Create message queue
 	if ((msqid = msgget(key_m, 0666 | IPC_CREAT)) < 0)
 	{
 		time_printf("msgget() failed\n");
@@ -141,24 +139,23 @@ int main(int argc, char const *argv[])
 	// Handle Ctrl-C
 	signal(SIGINT, sigHandleSIGINT);
 
-
-	// Start child processes  
-	if ((connectMng = fork()) == 0)
+	// Start child processes
+	if ((connect_mng = fork()) == 0)
 	{
-		powerSupply_count = 0;
-		connectMng_handle();
+		power_supply_count = 0;
+		connect_mng_handle();
 	}
-	else if ((elePowerCtrl = fork()) == 0)
+	else if ((ele_power_ctrl = fork()) == 0)
 	{
 		ele_power_ctrl_handle(shmid_equipment, shmid_system, msqid);
 	}
-	else if ((powSupplyInfoAccess = fork()) == 0)
+	else if ((pow_supply_info_access = fork()) == 0)
 	{
 		start_power_supply_info_access(make_power_supply_info_access(shmid_system, shmid_equipment, msqid));
 	}
-	else if ((logWrite = fork()) == 0)
+	else if ((log_write = fork()) == 0)
 	{
-		// Create sever log file 
+		// Create sever log file
 		char file_name[255];
 		time_t t = time(NULL);
 		struct tm *now = localtime(&t);
@@ -169,14 +166,14 @@ int main(int argc, char const *argv[])
 	}
 	else
 	{
-		time_printf("SERVER forked new process connectMng ------------------ pid: %d.\n", connectMng);
-		time_printf("SERVER forked new process elePowerCtrl ---------------- pid: %d.\n", elePowerCtrl);
-		time_printf("SERVER forked new process powSupplyInfoAccess --------- pid: %d.\n", powSupplyInfoAccess);
-		time_printf("SERVER forked new process logWrite -------------------- pid: %d.\n\n", logWrite);
-		waitpid(connectMng, NULL, 0);
-		waitpid(elePowerCtrl, NULL, 0);
-		waitpid(powSupplyInfoAccess, NULL, 0);
-		waitpid(logWrite, NULL, 0);
+		time_printf("SERVER forked new process connect_mng ------------------ pid: %d.\n", connect_mng);
+		time_printf("SERVER forked new process ele_power_ctrl ---------------- pid: %d.\n", ele_power_ctrl);
+		time_printf("SERVER forked new process pow_supply_info_access --------- pid: %d.\n", pow_supply_info_access);
+		time_printf("SERVER forked new process log_write -------------------- pid: %d.\n\n", log_write);
+		waitpid(connect_mng, NULL, 0);
+		waitpid(ele_power_ctrl, NULL, 0);
+		waitpid(pow_supply_info_access, NULL, 0);
+		waitpid(log_write, NULL, 0);
 		time_printf("SERVER exited\n\n");
 	}
 

@@ -11,6 +11,6 @@ typedef enum
     true
 } bool;
 
-extern int powerSupply_count;
+extern int power_supply_count;
 
 #endif // CONFIG_H

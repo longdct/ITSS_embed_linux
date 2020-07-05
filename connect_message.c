@@ -27,31 +27,30 @@
 #include "utils.h"
 #include "equipment.h"
 
-#define BACKLOG 10 /* Number of allowed connections */
-connect_message_t *make_connect_message(int shmid_system,int listen_sock,int msqid){
-    	connect_message_t *connect_message = (connect_message_t *)malloc(sizeof(connect_message_t));
-        connect_message->listen_sock=listen_sock;
-        connect_message->msqid=msqid;
-		connect_message->shmid_system=shmid_system;
-        return connect_message;
+
+connect_message_t *make_connect_message(int shmid_system, int listen_sock, int msqid)
+{
+	connect_message_t *connect_message = (connect_message_t *)malloc(sizeof(connect_message_t));
+	connect_message->listen_sock = listen_sock;
+	connect_message->msqid = msqid;
+	connect_message->shmid_system = shmid_system;
+	return connect_message;
 }
-void start_connect_message(connect_message_t *connect_message){
-    //Step 3: Listen request from client
+void start_connect_message(connect_message_t *connect_message)
+{
 	int sin_size;
 	int conn_sock;
 	struct sockaddr_in client;
 	int bytes_sent, bytes_received;
-	pid_t powerSupply;
+	pid_t power_supply;
 	if (listen(connect_message->listen_sock, BACKLOG) == -1)
 	{
 		time_printf("listen() failed\n");
 		exit(1);
 	}
-
-	//Step 4: Communicate with client
 	while (1)
 	{
-		//accept request
+
 		sin_size = sizeof(struct sockaddr_in);
 		if ((conn_sock = accept(connect_message->listen_sock, (struct sockaddr *)&client, &sin_size)) == -1)
 		{
@@ -59,8 +58,7 @@ void start_connect_message(connect_message_t *connect_message){
 			continue;
 		}
 
-		// if 11-th equip connect to SERVER
-		if (powerSupply_count == MAX_EQUIP)
+		if (power_supply_count == MAX_EQUIP)
 		{
 			char re = '9';
 			if ((bytes_sent = send(conn_sock, &re, 1, 0)) <= 0)
@@ -69,28 +67,27 @@ void start_connect_message(connect_message_t *connect_message){
 			break;
 		}
 
-		// create new process powerSupply
-		if ((powerSupply = fork()) < 0)
+		if ((power_supply = fork()) < 0)
 		{
-			time_printf("powerSupply fork() failed\n");
+			time_printf("power_supply fork() failed\n");
 			continue;
 		}
 
-		if (powerSupply == 0)
+		if (power_supply == 0)
 		{
-			//in child
+			//child process
 			close(connect_message->listen_sock);
 			start_power_supply(make_power_supply(conn_sock, connect_message->shmid_system, connect_message->msqid));
 			close(conn_sock);
 		}
 		else
 		{
-			//in parent
+			//parent process
 			close(conn_sock);
-			powerSupply_count++;
-			time_printf("A equip connected, connectMng forked new process powerSupply --- pid: %d.\n", powerSupply);
+			power_supply_count++;
+			time_printf("A equip connected, connect_mng forked new process power_supply --- pid: %d.\n", power_supply);
 		}
-	} //end communication
+	}
 
 	close(connect_message->listen_sock);
-} //end function connectMng_handle
+}

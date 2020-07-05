@@ -54,7 +54,7 @@ void start_power_supply(power_supply_t *powsup)
 			mess = make_message(ELEC_POWER_CTRL_MESS_CODE, W_DISCONNECTING_FORMAT, getpid());
 			msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
 
-			powerSupply_count--;
+			power_supply_count--;
 
 			kill(getpid(), SIGKILL); // kill this process
 			break;

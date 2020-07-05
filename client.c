@@ -1,10 +1,3 @@
-//////////////////////////////////////////////////////////
-//  \    /\   Simple power supply program - client side //
-//   )  ( ')                                            //
-//  (  /  )                                             //
-//   \(__)|                                          N. //
-//////////////////////////////////////////////////////////
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,56 +11,52 @@
 
 int main(int argc, char const *argv[])
 {
-	if (argc != 3)
-	{
-		fprintf(stderr, "Usage: %s <Server IP> <Echo Port>\n", argv[0]);
-		exit(1);
-	}
 
-	// Get info for equip
 	char name[50];
 	int mode_2;
 	int mode_3;
 	int use_mode;
-	printf("Equipment name: ");
-	scanf("%s", name);
-	printf("Normal power mode: ");
-	scanf("%*c%d", &mode_2);
-	getchar();
-	printf("Limited power mode: ");
-	scanf("%d", &mode_3);
-	getchar();
+	if (argc == 3)
+	{
+		printf("Equipment Name: ");
+		scanf("%s", name);
+		printf("Normal Power Usage: ");
+		scanf("%*c%d", &mode_2);
+		printf("Limited Power Usage: ");
+		scanf("%*c%d%*c", &mode_3);
+	}
+	else if (argc == 6)
+	{
+		strcpy(name, argv[3]);
+		mode_2 = atoi(argv[4]);
+		mode_3 = atoi(argv[5]);
+	}
+	else
+	{
+		exit(1);
+	}
 
-	// Step 0: Init variable
 	int client_sock;
 	char buff[BUFF_SIZE];
 	struct sockaddr_in server_addr;
 	int msg_len, bytes_sent, bytes_received;
-
-	// Step 1: Construct socket
 	client_sock = socket(AF_INET, SOCK_STREAM, 0);
-
-	// Step 2: Specify server address
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(atoi(argv[2]));
 	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
 
-	// Step 3: Request to connect server
 	if (connect(client_sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0)
 	{
-		perror("accept() failed\n");
+		perror("Server not available\n");
 		exit(1);
 	}
 
-	// Step 4: Communicate with server
-
-	// First, send equip info to server
 	memset(buff, '\0', strlen(buff) + 1);
 	sprintf(buff, "%s|%d|%d", name, mode_2, mode_3);
 	msg_len = strlen(buff);
 	if (msg_len == 0)
 	{
-		printf("No info on equip\n");
+		printf("Equipment info not available\n");
 		close(client_sock);
 		exit(1);
 	}
@@ -79,16 +68,13 @@ int main(int argc, char const *argv[])
 		exit(1);
 	}
 
-	// Then, wait for server response
 	if (fork() == 0)
 	{
-		// Child: listen from server
 		while (1)
 		{
 			bytes_received = recv(client_sock, buff, BUFF_SIZE - 1, 0);
 			if (bytes_received <= 0)
 			{
-				// if DISCONNECT
 				printf("\nServer shuted down.\n");
 				break;
 			}
@@ -97,10 +83,8 @@ int main(int argc, char const *argv[])
 				buff[bytes_received] = '\0';
 			}
 
-			int buff_i = atoi(buff);
-			// if (buff_i = 9) => max equip reached => quit
-
-			if (buff_i == 9)
+			int buff_count = atoi(buff);
+			if (buff_count == 9)
 			{
 				printf("Max number of equipment reached. Cannot connect to server\n");
 			}
@@ -108,16 +92,15 @@ int main(int argc, char const *argv[])
 	}
 	else
 	{
-		// Parent: open menu for user
 		do
 		{
 			sleep(1);
 			printf(
-				"--------\nPlease choose 0, 1, or 2 to change mode of equipment:\n"
-				"0) Turning off\n"
-				"1) Normal mode\n"
-				"2) Power saving mode\n"
-				"Other options to disconnect.\nYour choice: ");
+				"----- MENU -----\n"
+				"0. Turn off\n"
+				"1. Normal mode\n"
+				"2. Limited mode\n"
+				"(Choose 0,1 or 2, others to disconnect): ");
 
 			char menu = getchar();
 			getchar();
@@ -131,7 +114,7 @@ int main(int argc, char const *argv[])
 				printf("NORMAL MODE\n\n");
 				break;
 			case '2':
-				printf("POWER SAVING MODE\n\n");
+				printf("LIMITED MODE\n\n");
 				break;
 			default:
 				menu = '3';
@@ -142,8 +125,6 @@ int main(int argc, char const *argv[])
 			send(client_sock, &menu, 1, 0);
 		} while (1);
 	}
-
-	// Step 5: Close socket
 	close(client_sock);
 	kill(0, SIGKILL);
 	return 0;

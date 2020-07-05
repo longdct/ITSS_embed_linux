@@ -181,7 +181,7 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
 
                         new_msg.mtype = LOG_WRITE_MESS_CODE;
                         msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
-                     
+
                         new_msg.mtype = POW_SUP_INF_ACC_MESS_CODE;
                         msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
                     }
@@ -209,4 +209,4 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
             }
         }
     }
-} 
+}
