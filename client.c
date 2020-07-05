@@ -33,6 +33,7 @@ int main(int argc, char const *argv[])
 	}
 	else
 	{
+		fprintf(stderr, "Usage: %s <Server IP> <Echo Port> or <Server IP> <Echo Port> <Equipment name> <Normal Power Usage> <Limited Power Usage> \n", argv[0]);
 		exit(1);
 	}
 
