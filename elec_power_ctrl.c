@@ -210,7 +210,7 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
                     if (powsys->current_power < POWER_THRESHOLD)
                     {
                         powsys->supply_over = 0;
-                        time_printf("OK, power now is %d", powsys->current_power);
+                        time_printf("OK, power now is %d\n", powsys->current_power);
                         kill(my_child, SIGKILL);
                         break;
                     }

@@ -109,7 +109,7 @@ void start_power_supply_info_access(power_supply_info_access_t *powsup_info_acce
 				time_printf("%s\n", temp);
 			}
 		}
-		sleep(1);
+		// sleep(1);
 		time_printf("Current system supply: %dW\n\n", powsup_info_access->powsys->current_power);
 
 	} // endwhile
