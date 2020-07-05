@@ -3,6 +3,6 @@
 
 #include "config.h"
 
-void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid);
+void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid);
 
 #endif

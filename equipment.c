@@ -40,8 +40,19 @@ void print_equip(equip_t *equip)
 	time_printf("-----------------------------\n");
 	time_printf("Equipment Information\n");
 	time_printf("\t Equipment Name: %s\n", equip->name);
-	time_printf("\t Ordinal Mode: %dW\n", equip->use_power[1]);
+	time_printf("\t Normal Mode: %dW\n", equip->use_power[1]);
 	time_printf("\t Limited Mode: %dW\n", equip->use_power[2]);
 	time_printf("\t Current Mode: %s\n", mode_to_string(equip->mode));
-	time_printf("-----------------------------\n\n");
+	time_printf("-----------------------------\n");
+}
+
+void file_print_equip(FILE *file, equip_t *equip)
+{
+	file_time_printf(file, "-----------------------------\n");
+	file_time_printf(file, "Equipment Information\n");
+	file_time_printf(file, "\t Equipment Name: %s\n", equip->name);
+	file_time_printf(file, "\t Normal Mode: %dW\n", equip->use_power[1]);
+	file_time_printf(file, "\t Limited Mode: %dW\n", equip->use_power[2]);
+	file_time_printf(file, "\t Current Mode: %s\n", mode_to_string(equip->mode));
+	file_time_printf(file, "-----------------------------\n\n");
 }

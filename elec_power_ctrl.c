@@ -12,8 +12,76 @@
 #include "message.h"
 #include "equipment.h"
 #include "power_system.h"
+#include "utils.h"
+#include "use_mode.h"
 
-void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
+equip_t *extract_equipment_from_msg(equip_t *equipment_list, int pid)
+{
+    for (int i = 0; i < MAX_EQUIP; i++)
+    {
+        if (equipment_list[i].pid == pid)
+        {
+            return &(equipment_list[i]);
+        }
+    }
+    time_printf("EQUIPMENT NOT FOUND!!!!!!\n");
+    exit(1);
+    return NULL;
+}
+
+int ele_handle_msg(equip_t *equipment_list, int msqid, int current_power)
+{
+    char name[MAX_EQUIP_NAME];
+    int mode;
+    int pid;
+    int ordinal_use;
+    int limited_use;
+
+    message_t mess;
+    equip_t *equipment;
+
+    if (msgrcv(msqid, &mess, MAX_MESSAGE_LENGTH, ELEC_POWER_CTRL_MESS_CODE, 0) == -1)
+    {
+        printf("msgrcv() error");
+        exit(1);
+    }
+    // printf("%s", mess.mtext);
+
+    // in case of creating new equip
+    if (mess.mtext[0] == 'n')
+    {
+        sscanf(mess.mtext, R_NEW_EQUIPMENT_FORMAT, &pid, name, &ordinal_use, &limited_use);
+        equipment = extract_equipment_from_msg(equipment_list, pid);
+        sprintf(mess.mtext, "s|Equipment %s connected. Normal power usage: %dW. Limited power usage: %dW. Current mode: %s", equipment->name, equipment->use_power[1], equipment->use_power[2], mode_to_string(equipment->mode));
+        // printf("%s", mess.mtext);
+    }
+    else if (mess.mtext[0] == 'm') // in case of changing mode
+    {
+        sscanf(mess.mtext, R_MODE_CHANGING_FORMAT, &pid, &mode);
+        equipment = extract_equipment_from_msg(equipment_list, pid);
+        sprintf(mess.mtext, "s|Equipment %s change mode. Current mode: %s", equipment->name, mode_to_string(equipment->mode));
+        // printf("%s", mess.mtext);
+    }
+    else if (mess.mtext[0] == 'd') // in case of disconnection
+    {
+        sscanf(mess.mtext, R_DISCONNECTING_FORMAT, pid);
+        equipment = extract_equipment_from_msg(equipment_list, pid);
+        sprintf(mess.mtext, "s|Equipment %s disconnected", equipment->name);
+        // printf("%s", mess.mtext);
+    }
+
+    mess.mtype = LOG_WRITE_MESS_CODE;
+    // printf("%s", mess.mtext);
+    msgsnd(msqid, &mess, MAX_MESSAGE_LENGTH, 0);
+
+    // recalculate power
+    int sum_temp = 0;
+    for (int i = 0; i < MAX_EQUIP; i++)
+        sum_temp += equipment_list[i].use_power[equipment_list[i].mode];
+    return sum_temp;
+}
+
+void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
 {
     equip_t *equipment;
     powsys_t *powsys;
@@ -39,9 +107,7 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
     while (1)
     {
         // get total power using
-        int sum_temp = 0;
-        for (i = 0; i < MAX_EQUIP; i++)
-            sum_temp += equipment[i].use_power[equipment[i].mode];
+        int sum_temp = ele_handle_msg(equipment, msqid, powsys->current_power);
         powsys->current_power = sum_temp;
 
         // check threshold
@@ -71,7 +137,7 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
 
             // send message to logWrite
             message_t new_msg;
-            new_msg.mtype = 1;
+            new_msg.mtype = LOG_WRITE_MESS_CODE;
             char temp[MAX_MESSAGE_LENGTH];
             sprintf(temp, "WARNING!!! Over threshold, power comsuming: %dW", powsys->current_power);
             time_printf("%s\n", temp);
@@ -84,7 +150,7 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
         {
             // send message to logWrite
             message_t new_msg;
-            new_msg.mtype = 1;
+            new_msg.mtype = LOG_WRITE_MESS_CODE;
             char temp[MAX_MESSAGE_LENGTH];
 
             sprintf(temp, "DANGER!!! System overload, power comsuming: %dW", powsys->current_power);
@@ -99,8 +165,12 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
             {
                 if (equipment[no].mode == 1)
                 {
-                    new_msg.mtype = 2;
                     sprintf(new_msg.mtext, "m|%d|2|", equipment[no].pid);
+
+                    new_msg.mtype = LOG_WRITE_MESS_CODE;
+                    msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
+
+                    new_msg.mtype = POW_SUP_INF_ACC_MESS_CODE;
                     msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
                 }
             }
@@ -116,8 +186,12 @@ void elec_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
                 {
                     if (equipment[no].mode != 0)
                     {
-                        new_msg.mtype = 2;
                         sprintf(new_msg.mtext, "m|%d|0|", equipment[no].pid);
+
+                        new_msg.mtype = LOG_WRITE_MESS_CODE;
+                        msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
+                     
+                        new_msg.mtype = POW_SUP_INF_ACC_MESS_CODE;
                         msgsnd(msqid, &new_msg, MAX_MESSAGE_LENGTH, 0);
                     }
                 }

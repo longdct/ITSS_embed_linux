@@ -171,7 +171,7 @@ int main(int argc, char const *argv[])
 	}
 	else if ((elePowerCtrl = fork()) == 0)
 	{
-		elec_power_ctrl_handle(shmid_equipment, shmid_system, msqid);
+		ele_power_ctrl_handle(shmid_equipment, shmid_system, msqid);
 	}
 	else if ((powSupplyInfoAccess = fork()) == 0)
 	{

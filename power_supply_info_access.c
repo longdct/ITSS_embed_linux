@@ -64,7 +64,6 @@ void start_power_supply_info_access(power_supply_info_access_t *powsup_info_acce
 			equip = set_equip(equip, pid, name, ordinal_use, limited_use);
 
 			print_equip(equip);
-			time_printf("Current system supply: %dW\n", powsup_info_access->powsys->current_power);
 		}
 		else if (mess.mtext[0] == 'm') // in case of changing mode
 		{
@@ -110,6 +109,8 @@ void start_power_supply_info_access(power_supply_info_access_t *powsup_info_acce
 				time_printf("%s\n", temp);
 			}
 		}
+		sleep(1);
+		time_printf("Current system supply: %dW\n\n", powsup_info_access->powsys->current_power);
 
 	} // endwhile
 } //end function powSupplyInfoAccess

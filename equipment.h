@@ -2,6 +2,7 @@
 #define EQUIPMENT_H
 
 #include "use_mode.h"
+#include <stdio.h>
 
 #define MAX_EQUIP_NAME 50
 
@@ -33,5 +34,6 @@ equip_t *reset_equip(equip_t *equip);
  * Print to stdout the information of the equip
  * */
 void print_equip(equip_t *equip);
+void file_print_equip(FILE *file, equip_t *equip);
 
 #endif // EQUIPMENT_H

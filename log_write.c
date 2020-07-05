@@ -56,6 +56,8 @@ void log_write_handle(FILE *log_server, int shmid_equipment, int shmid_system, i
 			strftime(log_time, sizeof(log_time), "%Y/%m/%d_%H:%M:%S", now);
 			// write log
 			fprintf(log_server, "%s | %s\n", log_time, buff);
+			// printf("LOGGER: ");
+			// printf("%s | %s\n", log_time, buff);
 		}
 	}
 } //end function logWrite_handle

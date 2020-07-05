@@ -2,6 +2,6 @@
 
 const char *mode_to_string(enum use_mode mode)
 {
-    static const char *modes[] = {"OFF", "ORDINAL", "LIMITED"};
+    static const char *modes[] = {"OFF", "NORMAL", "LIMITED"};
     return modes[mode];
 }
