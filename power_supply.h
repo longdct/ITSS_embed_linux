@@ -7,7 +7,7 @@ typedef struct
 {
     int conn_sock;
     int msqid;
-    powsys_t *powsys;
+    power_system_t *powsys;
 } power_supply_t;
 
 power_supply_t *make_power_supply(int conn_sock, int shmid_system, int msqid);

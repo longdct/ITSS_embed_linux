@@ -1,4 +1,3 @@
-
 #include "equipment.h"
 #include "power_system.h"
 
@@ -9,7 +8,7 @@ typedef struct
 {
     int msqid;
     equip_t *equipment;
-    powsys_t *powsys;
+    power_system_t *powsys;
 } power_supply_info_access_t;
 
 /**

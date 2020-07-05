@@ -26,7 +26,7 @@ power_supply_t *make_power_supply(int conn_sock, int shmid_system, int msqid)
 	power_supply_t *powsup = (power_supply_t *)malloc(sizeof(power_supply_t));
 
 	// Get shared memory
-	if ((powsup->powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
+	if ((powsup->powsys = (power_system_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
 	{
 		time_printf("shmat() for power system failed at power supply creation\n");
 		free(powsup);
@@ -36,7 +36,7 @@ power_supply_t *make_power_supply(int conn_sock, int shmid_system, int msqid)
 	powsup->msqid = msqid;
 
 	return powsup;
-} // end function make_power_supply
+}
 
 void start_power_supply(power_supply_t *powsup)
 {
@@ -50,10 +50,6 @@ void start_power_supply(power_supply_t *powsup)
 		bytes_received = recv(powsup->conn_sock, received_data, BUFF_SIZE - 1, 0);
 		if (bytes_received <= 0) // if connection is disconnected
 		{
-			// // send message to power_supply_info_access
-			// mess = make_message(2, DISCONNECTING_FORMAT, getpid());
-			// msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
-
 			// send device info to elec_power_ctrl
 			mess = make_message(ELEC_POWER_CTRL_MESS_CODE, W_DISCONNECTING_FORMAT, getpid());
 			msgsnd(powsup->msqid, mess, MAX_MESSAGE_LENGTH, 0);
@@ -65,7 +61,7 @@ void start_power_supply(power_supply_t *powsup)
 		}
 		else // if receive message from client
 		{
-			
+
 			received_data[bytes_received] = '\0';
 			if (is_accept_message == true)
 			{

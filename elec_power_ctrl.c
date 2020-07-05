@@ -45,7 +45,6 @@ int ele_handle_msg(equip_t *equipment_list, int msqid, int current_power)
         printf("msgrcv() error");
         exit(1);
     }
-    // printf("%s", mess.mtext);
 
     // in case of creating new equip
     if (mess.mtext[0] == 'n')
@@ -53,25 +52,21 @@ int ele_handle_msg(equip_t *equipment_list, int msqid, int current_power)
         sscanf(mess.mtext, R_NEW_EQUIPMENT_FORMAT, &pid, name, &ordinal_use, &limited_use);
         equipment = extract_equipment_from_msg(equipment_list, pid);
         sprintf(mess.mtext, "s|Equipment %s connected. Normal power usage: %dW. Limited power usage: %dW. Current mode: %s", equipment->name, equipment->use_power[1], equipment->use_power[2], mode_to_string(equipment->mode));
-        // printf("%s", mess.mtext);
     }
     else if (mess.mtext[0] == 'm') // in case of changing mode
     {
         sscanf(mess.mtext, R_MODE_CHANGING_FORMAT, &pid, &mode);
         equipment = extract_equipment_from_msg(equipment_list, pid);
         sprintf(mess.mtext, "s|Equipment %s change mode. Current mode: %s", equipment->name, mode_to_string(equipment->mode));
-        // printf("%s", mess.mtext);
     }
     else if (mess.mtext[0] == 'd') // in case of disconnection
     {
         sscanf(mess.mtext, R_DISCONNECTING_FORMAT, pid);
         equipment = extract_equipment_from_msg(equipment_list, pid);
         sprintf(mess.mtext, "s|Equipment %s disconnected", equipment->name);
-        // printf("%s", mess.mtext);
     }
 
     mess.mtype = LOG_WRITE_MESS_CODE;
-    // printf("%s", mess.mtext);
     msgsnd(msqid, &mess, MAX_MESSAGE_LENGTH, 0);
 
     // recalculate power
@@ -84,18 +79,16 @@ int ele_handle_msg(equip_t *equipment_list, int msqid, int current_power)
 void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
 {
     equip_t *equipment;
-    powsys_t *powsys;
+    power_system_t *powsys;
 
-    //////////////////////////////
-    // Connect to shared memory //
-    //////////////////////////////
+    // Connect to shared memory
     if ((equipment = (equip_t *)shmat(shmid_equipment, (void *)0, 0)) == (void *)-1)
     {
         time_printf("shmat() failed\n");
         exit(1);
     }
 
-    if ((powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
+    if ((powsys = (power_system_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
     {
         time_printf("shmat() failed\n");
         exit(1);
@@ -120,14 +113,12 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
         {
             powsys->supply_over = 0;
             powsys->threshold_over = 1;
-            // powsys->reset = 0;
         }
         else
         {
             check_warn_threshold = 0;
             powsys->supply_over = 0;
             powsys->threshold_over = 0;
-            // powsys->reset = 0;
         }
 
         // WARN over threshold
@@ -135,7 +126,7 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
         {
             check_warn_threshold = 1;
 
-            // send message to logWrite
+            // send message to log_write
             message_t new_msg;
             new_msg.mtype = LOG_WRITE_MESS_CODE;
             char temp[MAX_MESSAGE_LENGTH];
@@ -148,7 +139,7 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
         // overload
         if (powsys->supply_over)
         {
-            // send message to logWrite
+            // send message to log_write
             message_t new_msg;
             new_msg.mtype = LOG_WRITE_MESS_CODE;
             char temp[MAX_MESSAGE_LENGTH];
@@ -210,12 +201,12 @@ void ele_power_ctrl_handle(int shmid_equipment, int shmid_system, int msqid)
                     if (powsys->current_power < POWER_THRESHOLD)
                     {
                         powsys->supply_over = 0;
-                        time_printf("OK, power now is %d\n", powsys->current_power);
+                        time_printf("Power now is %d\n", powsys->current_power);
                         kill(my_child, SIGKILL);
                         break;
                     }
                 }
             }
         }
-    } // endwhile
-} //end function elePowerCtrl_handle
+    }
+} 

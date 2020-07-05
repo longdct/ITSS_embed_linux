@@ -11,10 +11,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/shm.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 
 #include "utils.h"
 

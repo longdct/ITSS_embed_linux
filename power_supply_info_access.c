@@ -19,7 +19,7 @@ power_supply_info_access_t *make_power_supply_info_access(int shmid_system, int 
 		free(powsup_info_access);
 		return NULL;
 	}
-	if ((powsup_info_access->powsys = (powsys_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
+	if ((powsup_info_access->powsys = (power_system_t *)shmat(shmid_system, (void *)0, 0)) == (void *)-1)
 	{
 		time_printf("shmat() for power system failed at power supply info access creation\n");
 		free(powsup_info_access);

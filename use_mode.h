@@ -4,10 +4,13 @@
 enum use_mode
 {
     OFF,
-    ORDINAL,
+    NORMAL,
     LIMITED
 };
 
+/**
+ * Convert enum type of mode into string
+ * */
 const char *mode_to_string(enum use_mode mode);
 
 #endif // USE_MODE_H
